@@ -1,4 +1,3 @@
-
 import asyncio
 import os
 import json
@@ -11,7 +10,7 @@ from datetime import datetime, timedelta
 from playwright.async_api import async_playwright
 
 # ==========================================
-# ⚙️ MALIK UMAIR SVIP - CONFIGURATION
+# ⚙️ MALIK UMAIR SVIP - FAST S&R CONFIGURATION
 # ==========================================
 TELEGRAM_BOT_TOKEN = "8690803539:AAGWSs0B0viP4nNXqUSemCX7yQa5ul1uY6o"
 CHANNEL_CHAT_ID = "@malikumairsvipsignals"
@@ -102,7 +101,6 @@ def get_upcoming_news_schedule():
 # --- LIVE MARKET STATUS CHECKER ---
 def check_live_market_status():
     try:
-        # Sample check across top pairs to evaluate volatility/status
         volatilities = []
         for pair, yf_symbol in list(LIVE_PAIRS_MAP.items())[:5]:
             ticker = yf.Ticker(yf_symbol)
@@ -116,11 +114,11 @@ def check_live_market_status():
         if volatilities:
             avg_vol = np.mean(volatilities)
             if avg_vol > 0.0015:
-                return "🔴 **AVOID / HIGH CHOPPY VOLATILITY**\nMarket is moving aggressively with unpredictable whipsaws. Trade with extreme caution or stay out!", "AVOID"
+                return "🔴 **AVOID / HIGH CHOPPY VOLATILITY**\nMarket is moving aggressively. Trade with caution!", "AVOID"
             elif avg_vol < 0.0003:
-                return "🟡 **NORMAL / LOW MOMENTUM**\nMarket is quiet and slow. Trend continuation might be weak.", "NORMAL"
+                return "🟡 **NORMAL / LOW MOMENTUM**\nMarket is quiet.", "NORMAL"
             else:
-                return "🟢 **GOOD / STABLE MARKET**\nMarket conditions are healthy with smooth momentum candles. Ideal for executing strategy signals!", "GOOD"
+                return "🟢 **GOOD / STABLE MARKET**\nConditions are ideal for S&R execution!", "GOOD"
     except:
         pass
     return "🟢 **NORMAL MARKET CONDITIONS**\nStable environment for trading.", "NORMAL"
@@ -238,7 +236,7 @@ async def handle_telegram_callbacks():
                                         f"--------------------------------------------------\n"
                                     )
                             else:
-                                ans_text = "📰 *FOREX NEWS SCHEDULE*\n━━━━━━━━━━━━━━━━━━━━━━━━━\nNo major High-Impact news found right now. Market is clear!"
+                                ans_text = "📰 *FOREX NEWS SCHEDULE*\n━━━━━━━━━━━━━━━━━━━━━━━━━\nNo major High-Impact news found right now."
                         elif callback_data == "res_status":
                             status_desc, _ = check_live_market_status()
                             ans_text = f"📊 *LIVE MARKET STATUS SCANNER*\n━━━━━━━━━━━━━━━━━━━━━━━━━\n{status_desc}\n━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -289,11 +287,11 @@ async def capture_chart(pair: str, output_path: str):
 def get_market_data(yf_symbol):
     try:
         ticker = yf.Ticker(yf_symbol)
-        df_2m = ticker.history(period="2d", interval="2m", auto_adjust=True, timeout=10)
+        df_2m = ticker.history(period="1d", interval="1m", auto_adjust=True, timeout=10)
         
         if not df_2m.empty and len(df_2m) >= 15:
             candles = []
-            for i in range(-5, 0):
+            for i in range(len(df_2m)):
                 row = df_2m.iloc[i]
                 candles.append({
                     'open': float(row['Open']), 'high': float(row['High']),
@@ -304,15 +302,25 @@ def get_market_data(yf_symbol):
         pass
     return None
 
-def analyze_fast_strategy(candles):
-    if not candles or len(candles) < 2: return None
-    prev_candle, curr_candle = candles[-2], candles[-1]
+# --- FAST S&R STRATEGY LOGIC ---
+def analyze_sr_strategy(candles):
+    if not candles or len(candles) < 15: 
+        return None
+    
+    recent_slice = candles[-15:-1]
+    highs = [c['high'] for c in recent_slice]
+    lows = [c['low'] for c in recent_slice]
+    
+    resistance_level = max(highs)
+    support_level = min(lows)
+    
+    curr_candle = candles[-1]
     entry_price = curr_candle['close']
     
-    if curr_candle['close'] > curr_candle['open'] and prev_candle['close'] > prev_candle['open']:
-        return ("⚡ Fast Momentum Call", "CALL 🟢", f"{entry_price:.5f}", "🔥 FAST 85%+", entry_price)
-    elif curr_candle['close'] < curr_candle['open'] and prev_candle['close'] < prev_candle['open']:
-        return ("⚡ Fast Momentum Put", "PUT 🔻", f"{entry_price:.5f}", "🔥 FAST 85%+", entry_price)
+    if curr_candle['low'] <= support_level * 1.0003 and curr_candle['close'] >= curr_candle['open']:
+        return ("🛡️ S&R Zone Support Bounce", "CALL 🟢", f"{entry_price:.5f}", "🔥 S&R 90%+", entry_price)
+    elif curr_candle['high'] >= resistance_level * 0.9997 and curr_candle['close'] <= curr_candle['open']:
+        return ("🛡️ S&R Zone Resistance Rejection", "PUT 🔻", f"{entry_price:.5f}", "🔥 S&R 90%+", entry_price)
         
     return None
 
@@ -326,7 +334,7 @@ async def process_signal(pair: str, yf_symbol: str, pattern: str, direction: str
     
     await capture_chart(pair, live_img)
     signal_msg = (
-        f"**👑 MALIK UMAIR SVIP - SIGNAL**\n"
+        f"**👑 MALIK UMAIR SVIP - FAST S&R SIGNAL**\n"
         f"━━━━━━━━━━━━━━━━━━━━━━━━━\n"
         f"📊 **Asset:** `#{pair}` | **Session:** `{session_type}`\n"
         f"⏳ **Timeframe:** `1 Minute (Chart) / 2 Min (Expiry)`\n"
@@ -369,7 +377,7 @@ async def process_signal(pair: str, yf_symbol: str, pattern: str, direction: str
             result_status = "❌ **MTG LOSS / OTM 🛑**"
 
     await capture_chart(pair, result_img)
-    result_msg = f"🏆 **MALIK UMAIR SVIP - RESULT**\n📊 **Asset:** `#{pair}`\n✨ **Status:** {result_status}"
+    result_msg = f"🏆 **MALIK UMAIR SVIP - S&R RESULT**\n📊 **Asset:** `#{pair}`\n✨ **Status:** {result_status}"
     if os.path.exists(result_img):
         send_telegram_photo_with_buttons(result_img, result_msg)
         try: os.remove(result_img)
@@ -382,7 +390,7 @@ async def process_signal(pair: str, yf_symbol: str, pattern: str, direction: str
 # --- MAIN CONTROLLER WITH TIMINGS & WEEKEND OFF ---
 async def main():
     global is_signal_running
-    print("Malik Umair SVIP Bot Active with 4 Buttons, Timings & News/Market Scanners...")
+    print("Malik Umair SVIP Fast S&R Bot Active...")
     asyncio.create_task(handle_telegram_callbacks())
     
     morning_summary_sent_today = ""
@@ -393,44 +401,33 @@ async def main():
         current_date_str = now_pk.strftime("%Y-%m-%d")
         h, m = now_pk.hour, now_pk.minute
         
-        # Weekend Off Check (5 = Saturday, 6 = Sunday)
         if now_pk.weekday() >= 5:
             print("Weekend (Sat/Sun) Detected! Market Closed. Resting...", end="\r")
             await asyncio.sleep(3600)
             continue
         
-        # Sessions: Morning (12 PM - 3 PM), Evening (6 PM - 10 PM)
         is_morning = (12 <= h < 15)
         is_evening = (18 <= h < 22)
         session_type = "Morning" if is_morning else ("Evening" if is_evening else None)
         
-        # Auto Summary at 3:05 PM
         if h == 15 and m == 5:
             if morning_summary_sent_today != current_date_str:
                 trigger_auto_summary("Morning")
                 morning_summary_sent_today = current_date_str
                 
-        # Auto Summary at 10:05 PM
         if h == 22 and m == 5:
             if evening_summary_sent_today != current_date_str:
                 trigger_auto_summary("Evening")
                 evening_summary_sent_today = current_date_str
 
         if session_type and not is_signal_running:
-            # Check market status before generating signals if needed
-            _, status_flag = check_live_market_status()
-            if status_flag == "AVOID":
-                print(f"[{session_type} Session] Market Volatility is High / Avoid Zone. Waiting...", end="\r")
-                await asyncio.sleep(300)
-                continue
-
             signal_found = False
             for pair, yf_symbol in LIVE_PAIRS_MAP.items():
-                print(f"[{session_type} Session] Scanning Market -> {pair}                    ", end="\r")
+                print(f"[{session_type} Session] Fast Scanning S&R -> {pair}                    ", end="\r")
                 candles = get_market_data(yf_symbol)
                 
                 if candles:
-                    signal = analyze_fast_strategy(candles)
+                    signal = analyze_sr_strategy(candles)
                     if signal:
                         pattern, direction, entry_str, strength, entry_num = signal
                         await process_signal(pair, yf_symbol, pattern, direction, entry_str, strength, entry_num, session_type)
@@ -438,7 +435,7 @@ async def main():
                         break  
                         
             if not signal_found:
-                await asyncio.sleep(300)
+                await asyncio.sleep(15)
         else:
             print(f"Bot is resting (Outside active session hours)... Current Time: {h:02d}:{m:02d} PKT", end="\r")
             await asyncio.sleep(60)
