@@ -406,8 +406,9 @@ async def main():
             await asyncio.sleep(3600)
             continue
         
+        # Updated Timings: Morning (12 PM to 3 PM), Evening (4 PM to 10 PM)
         is_morning = (12 <= h < 15)
-        is_evening = (18 <= h < 22)
+        is_evening = (16 <= h < 22)
         session_type = "Morning" if is_morning else ("Evening" if is_evening else None)
         
         if h == 15 and m == 5:
