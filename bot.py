@@ -10,9 +10,9 @@ from datetime import datetime, timedelta
 from playwright.async_api import async_playwright
 
 # ==========================================
-# ⚙️ MALIK UMAIR SVIP - FAST S&R CONFIGURATION
+# ⚙️ MALIK UMAIR SVIP - CONFIGURATION
 # ==========================================
-TELEGRAM_BOT_TOKEN = "8690803539:AAGWSs0B0viP4nNXqUSemCX7yQa5ul1uY6o"
+TELEGRAM_BOT_TOKEN = "8690803539:AAEYG77XPI5DGmegur7m-0oejiaUHrFNU7s"
 CHANNEL_CHAT_ID = "@malikumairsvipsignals"
 HISTORY_FILE = "trading_history.json"
 
