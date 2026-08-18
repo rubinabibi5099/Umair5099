@@ -269,55 +269,63 @@ async def handle_telegram_callbacks():
             pass
         await asyncio.sleep(2)
 
-# --- PROFESSIONAL VIP IMAGE BRANDING OVERLAY ---
-def apply_vip_branding_overlay(image_path: str):
+# --- EXACT VIP FRAME COMPOSER (MATCHING YOUR DESIGN) ---
+def apply_exact_vip_frame(image_path: str):
     try:
-        base_img = Image.open(image_path).convert("RGBA")
-        width, height = base_img.size
+        chart_img = Image.open(image_path).convert("RGBA")
+        c_w, c_h = chart_img.size
         
-        # Create a blank transparent layer for drawing header banner
-        overlay = Image.new("RGBA", base_img.size, (0, 0, 0, 0))
-        draw = ImageDraw.Draw(overlay)
+        # Outer padding and dimensions for professional frame style
+        padding = 24
+        header_space = 46
+        new_w = c_w + (padding * 2)
+        new_h = c_h + padding + header_space + padding
         
-        # Draw gorgeous VIP Golden Header Box at the top center
-        banner_width = int(width * 0.65)
-        banner_height = 54
-        banner_x1 = (width - banner_width) // 2
-        banner_y1 = 12
-        banner_x2 = banner_x1 + banner_width
-        banner_y2 = banner_y1 + banner_height
+        # Create framed canvas with dark metallic background
+        framed_img = Image.new("RGBA", (new_w, new_h), (20, 22, 28, 255))
+        draw = ImageDraw.Draw(framed_img)
         
-        # Dark metallic background panel with golden border frame
-        draw.rounded_rectangle([banner_x1, banner_y1, banner_x2, banner_y2], radius=10, fill=(20, 22, 28, 230), outline=(212, 175, 55, 255), width=3)
+        # Paste chart inside the frame panel
+        chart_x = padding
+        chart_y = padding + header_space
+        framed_img.paste(chart_img, (chart_x, chart_y))
         
-        # Inner thin highlight border
-        draw.rounded_rectangle([banner_x1+3, banner_y1+3, banner_x2-3, banner_y2-3], radius=8, outline=(255, 223, 0, 180), width=1)
+        # Draw outer rounded border frame
+        draw.rounded_rectangle([12, 12, new_w - 12, new_h - 12], radius=14, fill=None, outline=(50, 55, 68, 255), width=3)
         
-        # Add branding text title
+        # Draw Top Golden Header Banner (Malik Umair Forex Signal)
+        banner_w = int(new_w * 0.55)
+        banner_h = 42
+        banner_x1 = (new_w - banner_w) // 2
+        banner_y1 = padding + 4
+        banner_x2 = banner_x1 + banner_w
+        banner_y2 = banner_y1 + banner_h
+        
+        # Gold/Dark gradient style header box
+        draw.rounded_rectangle([banner_x1, banner_y1, banner_x2, banner_y2], radius=10, fill=(28, 30, 38, 255), outline=(212, 175, 55, 255), width=3)
+        draw.rounded_rectangle([banner_x1+2, banner_y1+2, banner_x2-2, banner_y2-2], radius=8, outline=(255, 223, 0, 180), width=1)
+        
+        # Load font for header title
         try:
-            font = ImageFont.truetype("arialbd.ttf", 20)
+            font = ImageFont.truetype("arialbd.ttf", 18)
         except:
             font = ImageFont.load_default()
             
-        text = "👑 Malik Umair Forex Signal"
+        title_text = " Malik Umair Forex Signal"
+        bbox = draw.textbbox((0, 0), title_text, font=font)
+        t_w = bbox[2] - bbox[0]
+        t_h = bbox[3] - bbox[1]
+        t_x = banner_x1 + (banner_w - t_w) // 2
+        t_y = banner_y1 + (banner_h - t_h) // 2 - 2
         
-        # Center text inside header box
-        bbox = draw.textbbox((0, 0), text, font=font)
-        text_w = bbox[2] - bbox[0]
-        text_h = bbox[3] - bbox[1]
-        text_x = banner_x1 + (banner_width - text_w) // 2
-        text_y = banner_y1 + (banner_height - text_h) // 2 - 2
+        # Text shadow and golden text fill
+        draw.text((t_x + 1, t_y + 1), title_text, font=font, fill=(0, 0, 0, 255))
+        draw.text((t_x, t_y), title_text, font=font, fill=(255, 215, 0, 255))
         
-        # Draw shadow for text effect
-        draw.text((text_x + 1, text_y + 1), text, font=font, fill=(0, 0, 0, 255))
-        # Draw main gold text
-        draw.text((text_x, text_y), text, font=font, fill=(255, 215, 0, 255))
-        
-        # Composite overlay onto base chart image
-        final_img = Image.alpha_composite(base_img, overlay)
-        final_img.convert("RGB").save(image_path, "PNG")
+        # Save final composed professional image
+        framed_img.convert("RGB").save(image_path, "PNG")
     except Exception as e:
-        print(f"Branding Overlay Error: {e}")
+        print(f"Frame Composer Error: {e}")
 
 # --- TRADINGVIEW SCREENSHOT CAPTURE ---
 async def capture_chart(pair: str, output_path: str):
@@ -332,8 +340,8 @@ async def capture_chart(pair: str, output_path: str):
                 await asyncio.sleep(5)
                 await page.screenshot(path=output_path, clip={"x": 0, "y": 0, "width": 1280, "height": 700})
                 if os.path.exists(output_path) and os.path.getsize(output_path) > 15000:
-                    # Apply professional gold header branding overlay directly on screenshot
-                    apply_vip_branding_overlay(output_path)
+                    # Apply exact professional VIP frame layout
+                    apply_exact_vip_frame(output_path)
                     break
             except:
                 await asyncio.sleep(2)
@@ -474,7 +482,7 @@ async def main():
             await asyncio.sleep(3600)
             continue
         
-        # Updated Timings: Morning starts at 10 AM (10 AM to 3 PM), Evening (4 PM to 10 PM)
+        # Active Timings: Morning (10 AM to 3 PM), Evening (4 PM to 10 PM)
         is_morning = (10 <= h < 15)
         is_evening = (16 <= h < 22)
         session_type = "Morning" if is_morning else ("Evening" if is_evening else None)
@@ -492,7 +500,6 @@ async def main():
         if session_type and not is_signal_running:
             signal_found = False
             
-            # Randomize pairs list so it doesn't always scan EURUSD first
             pairs_list = list(LIVE_PAIRS_MAP.items())
             np.random.shuffle(pairs_list)
             
