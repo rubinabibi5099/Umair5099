@@ -184,16 +184,17 @@ def trigger_auto_summary(session_name):
     total, d_wins, m_wins, losses, acc = get_session_stats(session_name)
     t_wins = d_wins + m_wins
     summary_text = (
-        f"🚨 *{session_name.upper()} SESSION COMPLETED - TOTAL SUMMARY* 🚨\n"
+        f"👑 **MALIK UMAIR SVIP** 👑\n"
+        f"📊 **{session_name.upper()} SESSION REPORT**\n"
         f"━━━━━━━━━━━━━━━━━━━━━━━━━\n"
         f"🎯 **Total Signals:** `{total}`\n"
         f"⭐ **Direct Wins:** `{d_wins}`\n"
         f"✅ **MTG Wins:** `{m_wins}`\n"
         f"🏆 **Total Wins:** `{t_wins}`\n"
         f"❌ **Losses:** `{losses}`\n"
-        f"📈 **Lifetime Accuracy:** `{acc:.2f}%`\n"
+        f"📈 **Accuracy Rate:** `{acc:.2f}%`\n"
         f"━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        f"📌 *Use the buttons below to check history, news, or market status!*"
+        f"💡 *Excellence through precision & discipline.*"
     )
     send_telegram_message_with_buttons(summary_text)
 
@@ -242,21 +243,22 @@ async def handle_telegram_callbacks():
                             ans_text = f"📊 *LIVE MARKET STATUS SCANNER*\n━━━━━━━━━━━━━━━━━━━━━━━━━\n{status_desc}\n━━━━━━━━━━━━━━━━━━━━━━━━━"
                         else:
                             session_key = "Morning" if callback_data == "res_morning" else "Evening"
-                            title = "☀️ MORNING SESSION - LIFETIME RESULTS" if session_key == "Morning" else "🌙 EVENING SESSION - LIFETIME RESULTS"
+                            title = "☀️ MORNING SESSION PERFORMANCE" if session_key == "Morning" else "🌙 EVENING SESSION PERFORMANCE"
                             
                             total, d_wins, m_wins, losses, acc = get_session_stats(session_key)
                             t_wins = d_wins + m_wins
                             
                             ans_text = (
-                                f"*{title}*\n"
-                                f"━━━━━━━━━━━━━━━━━━━\n"
+                                f"👑 **MALIK UMAIR SVIP**\n"
+                                f"📌 *{title}*\n"
+                                f"━━━━━━━━━━━━━━━━━━━━━━━━━\n"
                                 f"🎯 **Total Signals:** `{total}`\n"
                                 f"⭐ **Direct Wins:** `{d_wins}`\n"
                                 f"✅ **MTG Wins:** `{m_wins}`\n"
                                 f"🏆 **Total Wins:** `{t_wins}`\n"
                                 f"❌ **Losses:** `{losses}`\n"
                                 f"📈 **Accuracy:** `{acc:.2f}%`\n"
-                                f"━━━━━━━━━━━━━━━━━━━"
+                                f"━━━━━━━━━━━━━━━━━━━━━━━━━"
                             )
                         
                         ans_url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/answerCallbackQuery"
@@ -333,15 +335,20 @@ async def process_signal(pair: str, yf_symbol: str, pattern: str, direction: str
     result_img = f"{pair}_result_{timestamp}.png"
     
     await capture_chart(pair, live_img)
+    
+    # 🌟 PROFESSIONAL VIP SIGNAL TEMPLATE DESIGN 🌟
     signal_msg = (
-        f"**👑 MALIK UMAIR SVIP - FAST S&R SIGNAL**\n"
+        f"👑 **MALIK UMAIR SVIP SIGNAL** 👑\n"
         f"━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        f"📊 **Asset:** `#{pair}` | **Session:** `{session_type}`\n"
-        f"⏳ **Timeframe:** `1 Minute (Chart) / 2 Min (Expiry)`\n"
-        f"🎯 **Pattern:** `{pattern}` | 📈 **Direction:** `{direction}`\n"
-        f"📍 **Entry:** `{entry_str}` | 💪 **Accuracy:** `{strength}`\n"
-        f"⏱️ **Expiry:** `Exact 2 Minutes`\n"
-        f"⚠️ **Take 1 Step MTG same direction iff loss**\n━━━━━━━━━━━━━━━━━━━━━━━━━"
+        f"💎 **Asset / Pair:** `#{pair}`\n"
+        f"🕒 **Trading Session:** `{session_type} Session`\n"
+        f"⏳ **Timeframe:** `1 Min (Chart) | 2 Min (Expiry)`\n"
+        f"🎯 **Strategy Setup:** `{pattern}`\n"
+        f"📈 **Execution Direction:** `{direction}`\n"
+        f"📍 **Precise Entry Point:** `{entry_str}`\n"
+        f"💪 **Setup Confidence:** `{strength}`\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"⚠️ *Money Management Rule:* `Take 1 Step MTG in the same direction strictly if the first trade results in a loss.`"
     )
     
     if os.path.exists(live_img):
@@ -360,7 +367,7 @@ async def process_signal(pair: str, yf_symbol: str, pattern: str, direction: str
 
     if is_first_win:
         save_trade_to_db("DIRECT_WIN", session_type)
-        result_status = "🎯 **DIRECT WIN / SHURESHOT ⭐**"
+        result_status = "🎯 **DIRECT WIN (SHURESHOT ITM ⭐)**"
     else:
         mtg_entry_num = exit_num
         await asyncio.sleep(120)
@@ -371,13 +378,23 @@ async def process_signal(pair: str, yf_symbol: str, pattern: str, direction: str
         
         if is_mtg_win:
             save_trade_to_db("MTG_WIN", session_type)
-            result_status = "✅ **MTG WIN / ITM 🎯**"
+            result_status = "✅ **MTG WIN (RECOVERY ITM 🎯)**"
         else:
             save_trade_to_db("LOSS", session_type)
-            result_status = "❌ **MTG LOSS / OTM 🛑**"
+            result_status = "❌ **MTG LOSS (OTM 🛑)**"
 
     await capture_chart(pair, result_img)
-    result_msg = f"🏆 **MALIK UMAIR SVIP - S&R RESULT**\n📊 **Asset:** `#{pair}`\n✨ **Status:** {result_status}"
+    
+    # 🌟 PROFESSIONAL VIP RESULT TEMPLATE DESIGN 🌟
+    result_msg = (
+        f"🏆 **MALIK UMAIR SVIP - TRADE RESULT** 🏆\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"💎 **Asset:** `#{pair}`\n"
+        f"📊 **Outcome Status:** {result_status}\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"💡 *Consistency is the key to long-term trading success.*"
+    )
+    
     if os.path.exists(result_img):
         send_telegram_photo_with_buttons(result_img, result_msg)
         try: os.remove(result_img)
@@ -385,6 +402,7 @@ async def process_signal(pair: str, yf_symbol: str, pattern: str, direction: str
     else:
         send_telegram_message_with_buttons(result_msg)
 
+    is_signal_signals = False
     is_signal_running = False
 
 # --- MAIN CONTROLLER WITH TIMINGS & WEEKEND OFF ---
@@ -406,7 +424,7 @@ async def main():
             await asyncio.sleep(3600)
             continue
         
-        # Updated Timings: Morning starts at 10 AM (10 AM to 3 PM), Evening (4 PM to 10 PM)
+        # Updated Timings: Morning (10 AM to 3 PM), Evening (4 PM to 10 PM)
         is_morning = (10 <= h < 15)
         is_evening = (16 <= h < 22)
         session_type = "Morning" if is_morning else ("Evening" if is_evening else None)
