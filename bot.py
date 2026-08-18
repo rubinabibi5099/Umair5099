@@ -29,7 +29,7 @@ LIVE_PAIRS_MAP = {
 
 is_signal_running = False
 last_loss_time = 0
-COOLDOWN_DURATION = 1800  # 30 Minutes Break
+COOLDOWN_DURATION = 1800  # 30 Minutes Break on loss
 
 # --- DATABASE FUNCTIONS ---
 def load_history():
@@ -157,13 +157,16 @@ def trigger_auto_summary(session_name):
     summary_text = (
         f"🚨 *MALIK UMAIR - {session_name.upper()} SESSION COMPLETED* 🚨\n"
         f"━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        f"🎯 **Total Signals:** `{total}` | ⭐ **Direct:** `{d_wins}`\n"
-        f"✅ **MTG Wins:** `{m_wins}` | ❌ **Losses:** `{losses}`\n"
+        f"🎯 **Total Signals:** `{total}`\n"
+        f"⭐ **Direct Wins:** `{d_wins}`\n"
+        f"✅ **MTG Wins:** `{m_wins}`\n"
+        f"❌ **Total Loss:** `{losses}`\n"
         f"📈 **Accuracy:** `{acc:.2f}%`\n"
         f"━━━━━━━━━━━━━━━━━━━━━━━━━"
     )
     send_telegram_message_with_buttons(summary_text)
 
+# --- DETAILED STATS CALLBACK HANDLER ---
 async def handle_telegram_callbacks():
     offset = 0
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/getUpdates"
@@ -177,6 +180,7 @@ async def handle_telegram_callbacks():
                         cq = update["callback_query"]
                         cb_data = cq.get("data", "")
                         query_id = cq["id"]
+                        
                         ans_text = "Loaded"
                         if cb_data == "res_news":
                             items = get_upcoming_news_schedule()
@@ -186,8 +190,20 @@ async def handle_telegram_callbacks():
                         else:
                             s_key = "Morning" if cb_data == "res_morning" else ("Evening" if cb_data == "res_evening" else "Night")
                             tot, dw, mw, los, ac = get_session_stats(s_key)
-                            ans_text = f"*{s_key} Results*\nTotal: {tot} | Wins: {dw+mw} | Acc: {ac:.2f}%"
-                        requests.post(f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/answerCallbackQuery", json={"callback_query_id": query_id, "text": "Loaded"})
+                            
+                            # Wazeh aur tafseeli report buttons ke liye
+                            ans_text = (
+                                f"📊 *{s_key.upper()} SESSION REPORT*\n"
+                                f"━━━━━━━━━━━━━━━━━━━\n"
+                                f"🎯 Total Signals: `{tot}`\n"
+                                f"⭐ Direct Wins: `{dw}`\n"
+                                f"✅ MTG Wins: `{mw}`\n"
+                                f"❌ Total Loss: `{los}`\n"
+                                f"📈 Accuracy: `{ac:.2f}%`\n"
+                                f"━━━━━━━━━━━━━━━━━━━"
+                            )
+                        
+                        requests.post(f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/answerCallbackQuery", json={"callback_query_id": query_id, "text": "Report Generated"})
                         send_telegram_simple_message(ans_text)
         except:
             pass
@@ -219,12 +235,10 @@ def get_market_data(yf_symbol):
         pass
     return None
 
-# --- FASTER & GUARANTEED SIGNAL GENERATOR ---
 def analyze_sr_strategy(candles):
     if not candles or len(candles) < 10: 
         return None
     
-    # Relaxed condition so signals trigger reliably without waiting endlessly
     recent = candles[-10:-1]
     res_lvl = max(c['high'] for c in recent)
     sup_lvl = min(c['low'] for c in recent)
@@ -232,12 +246,10 @@ def analyze_sr_strategy(candles):
     curr = candles[-1]
     entry_price = curr['close']
     
-    # Support Bounce or Momentum Call
     if curr['low'] <= sup_lvl * 1.0008 or curr['close'] > curr['open']:
         if curr['close'] >= curr['open']:
             return ("🛡️ S&R Support Bounce", "CALL 🟢", f"{entry_price:.5f}", "🔥 S&R 90%+", entry_price)
             
-    # Resistance Rejection or Momentum Put
     if curr['high'] >= res_lvl * 0.9992 or curr['close'] < curr['open']:
         if curr['close'] <= curr['open']:
             return ("🛡️ S&R Resistance Rejection", "PUT 🔻", f"{entry_price:.5f}", "🔥 S&R 90%+", entry_price)
@@ -309,7 +321,7 @@ async def process_signal(pair: str, yf_symbol: str, pattern: str, direction: str
 
 async def main():
     global is_signal_running, last_loss_time
-    print("Malik Umair SVIP Fast Scanner Active...")
+    print("Malik Umair SVIP Final Master Bot Active...")
     asyncio.create_task(handle_telegram_callbacks())
     
     m_ready, m_sum = "", ""
@@ -317,6 +329,7 @@ async def main():
     n_ready, n_sum = "", ""
     
     while True:
+        # UTC + 5 Pakistan Time Sync
         now_pk = datetime.utcnow() + timedelta(hours=5)
         current_date_str = now_pk.strftime("%Y-%m-%d")
         h, m = now_pk.hour, now_pk.minute
@@ -329,26 +342,31 @@ async def main():
             await asyncio.sleep(60)
             continue
 
-        # Timings & Notifications
+        # --- 1. MORNING SESSION TIMINGS ---
         if h == 11 and m == 45 and m_ready != current_date_str:
             send_telegram_message_with_buttons("📢 *READY FOR MORNING SESSION!* Starts in 15 mins! ☀️")
             m_ready = current_date_str
+            
         is_morning = (12 <= h < 15)
         if h == 15 and m == 5 and m_sum != current_date_str:
             trigger_auto_summary("Morning")
             m_sum = current_date_str
 
+        # --- 2. EVENING SESSION TIMINGS ---
         if h == 15 and m == 45 and e_ready != current_date_str:
             send_telegram_message_with_buttons("📢 *READY FOR EVENING SESSION!* Starts at 4:00 PM! 🌙")
             e_ready = current_date_str
+            
         is_evening = (16 <= h < 19)
         if h == 19 and m == 5 and e_sum != current_date_str:
             trigger_auto_summary("Evening")
             e_sum = current_date_str
 
+        # --- 3. NIGHT SESSION TIMINGS ---
         if h == 19 and m == 45 and n_ready != current_date_str:
             send_telegram_message_with_buttons("📢 *READY FOR NIGHT SESSION!* Starts at 8:00 PM! 🌃")
             n_ready = current_date_str
+            
         is_night = (20 <= h or h == 0) and not (0 < h < 8)
         if h == 0 and m == 5 and n_sum != current_date_str:
             trigger_auto_summary("Night")
