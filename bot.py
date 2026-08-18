@@ -279,38 +279,30 @@ def get_market_data(yf_symbol):
     try:
         ticker = yf.Ticker(yf_symbol)
         df = ticker.history(period="1d", interval="1m", auto_adjust=True, timeout=10)
-        if not df.empty and len(df) >= 25:
+        if not df.empty and len(df) >= 15:
             return [{'open': float(r['Open']), 'high': float(r['High']), 'low': float(r['Low']), 'close': float(r['Close'])} for _, r in df.iterrows()]
     except:
         pass
     return None
 
-# --- STRATEGY WITH TREND FILTER (EMA 20) ---
+# --- PURE S&R STRATEGY (EMA REMOVED) ---
 def analyze_sr_strategy(candles):
-    if not candles or len(candles) < 25: 
+    if not candles or len(candles) < 15: 
         return None
-    
-    df = pd.DataFrame(candles)
-    ema20 = df['close'].ewm(span=20, adjust=False).mean().iloc[-1]
-    curr_close = df['close'].iloc[-1]
     
     recent_slice = candles[-15:-1]
     resistance_level = max(c['high'] for c in recent_slice)
     support_level = min(c['low'] for c in recent_slice)
+    
     curr_candle = candles[-1]
     entry_price = curr_candle['close']
     
-    # REQUIREMENT 2: Trend Filter Check (No trade against trend)
-    is_bullish_trend = curr_close > ema20
-    
     if curr_candle['low'] <= support_level * 1.0003 and curr_candle['close'] >= curr_candle['open']:
-        if is_bullish_trend:  # Only Call if uptrend
-            return ("🛡️ S&R Support Bounce", "CALL 🟢", f"{entry_price:.5f}", "🔥 S&R 90%+", entry_price)
-            
+        return ("🛡️ S&R Support Bounce", "CALL 🟢", f"{entry_price:.5f}", "🔥 S&R 90%+", entry_price)
+        
     elif curr_candle['high'] >= resistance_level * 0.9997 and curr_candle['close'] <= curr_candle['open']:
-        if not is_bullish_trend:  # Only Put if downtrend
-            return ("🛡️ S&R Resistance Rejection", "PUT 🔻", f"{entry_price:.5f}", "🔥 S&R 90%+", entry_price)
-            
+        return ("🛡️ S&R Resistance Rejection", "PUT 🔻", f"{entry_price:.5f}", "🔥 S&R 90%+", entry_price)
+        
     return None
 
 async def process_signal(pair: str, yf_symbol: str, pattern: str, direction: str, entry_str: str, strength: str, entry_num: float, session_type: str):
@@ -362,7 +354,7 @@ async def process_signal(pair: str, yf_symbol: str, pattern: str, direction: str
         else:
             save_trade_to_db("LOSS", session_type)
             result_status = "❌ **MTG LOSS / OTM 🛑**"
-            last_loss_time = time.time()  # REQUIREMENT 3: Trigger 30m break on loss
+            last_loss_time = time.time()  # Trigger 30m break on loss
 
     # FORAN RESULT SENDING WITHOUT DELAY
     await capture_chart(pair, result_img)
@@ -388,7 +380,6 @@ async def main():
     night_ready_sent, night_sum_sent = "", ""
     
     while True:
-        # REQUIREMENT 1: Zero Lag & UTC + 5 (Pakistan Time sync)
         now_pk = datetime.utcnow() + timedelta(hours=5)
         current_date_str = now_pk.strftime("%Y-%m-%d")
         h, m = now_pk.hour, now_pk.minute
@@ -398,14 +389,13 @@ async def main():
             await asyncio.sleep(3600)
             continue
             
-        # REQUIREMENT 3: Cooldown Break Check (30 mins rest)
+        # Cooldown Break Check (30 mins rest)
         if time.time() - last_loss_time < COOLDOWN_DURATION:
-            print("Bot is on 30-min market cool-down break due to volatility/loss...", end="\r")
+            print("Bot is on 30-min market cool-down break...", end="\r")
             await asyncio.sleep(60)
             continue
 
-        # --- REQUIREMENT 4: NOTIFICATIONS & SESSIONS TIMING ---
-        # 1. Morning Notifications & Sessions
+        # --- NOTIFICATIONS & SESSIONS TIMING ---
         if h == 11 and m == 45 and morning_ready_sent != current_date_str:
             send_telegram_message_with_buttons("📢 *READY FOR MORNING SESSION!* Get ready team, session starts in 15 minutes! ☀️")
             morning_ready_sent = current_date_str
@@ -415,7 +405,6 @@ async def main():
             trigger_auto_summary("Morning")
             morning_sum_sent = current_date_str
 
-        # 2. Evening Notifications & Sessions
         if h == 15 and m == 45 and evening_ready_sent != current_date_str:
             send_telegram_message_with_buttons("📢 *READY FOR EVENING SESSION!* Prepare your terminals, session starts at 4:00 PM! 🌙")
             evening_ready_sent = current_date_str
@@ -425,19 +414,17 @@ async def main():
             trigger_auto_summary("Evening")
             evening_sum_sent = current_date_str
 
-        # 3. Night Notifications & Sessions
         if h == 19 and m == 45 and night_ready_sent != current_date_str:
             send_telegram_message_with_buttons("📢 *READY FOR NIGHT SESSION!* High volume night session starting at 8:00 PM! 🌃")
             night_ready_sent = current_date_str
             
-        is_night = (20 <= h or h == 0) and not (0 < h < 8) # Active up to midnight (12 AM)
+        is_night = (20 <= h or h == 0) and not (0 < h < 8)
         if h == 0 and m == 5 and night_sum_sent != current_date_str:
             trigger_auto_summary("Night")
             night_sum_sent = current_date_str
 
         session_type = "Morning" if is_morning else ("Evening" if is_evening else ("Night" if is_night else None))
 
-        # Synchronize exactly to 00 seconds of the minute to remove any lag
         if session_type and not is_signal_running:
             if datetime.now().second != 0:
                 await asyncio.sleep(0.2)
