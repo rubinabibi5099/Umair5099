@@ -423,7 +423,12 @@ async def main():
 
         if session_type and not is_signal_running:
             signal_found = False
-            for pair, yf_symbol in LIVE_PAIRS_MAP.items():
+            
+            # Randomize pairs list so it doesn't always scan EURUSD first
+            pairs_list = list(LIVE_PAIRS_MAP.items())
+            np.random.shuffle(pairs_list)
+            
+            for pair, yf_symbol in pairs_list:
                 print(f"[{session_type} Session] Fast Scanning S&R -> {pair}                    ", end="\r")
                 candles = get_market_data(yf_symbol)
                 
