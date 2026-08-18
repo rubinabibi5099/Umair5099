@@ -356,7 +356,7 @@ async def process_signal(pair: str, yf_symbol: str, pattern: str, direction: str
     candles_after = get_market_data(yf_symbol)
     exit_num = candles_after[-1]['close'] if candles_after and len(candles_after) > 0 else entry_num
     
-    is_first_win = (exit_num >= entry_num) if "CALL" in direction else (exit_num <= entry_num)
+    is_first_win = (exit_num > entry_num) if "CALL" in direction else (exit_num < entry_num)
 
     if is_first_win:
         save_trade_to_db("DIRECT_WIN", session_type)
@@ -367,7 +367,7 @@ async def process_signal(pair: str, yf_symbol: str, pattern: str, direction: str
         candles_mtg = get_market_data(yf_symbol)
         mtg_exit_num = candles_mtg[-1]['close'] if candles_mtg and len(candles_mtg) > 0 else mtg_entry_num
         
-        is_mtg_win = (mtg_exit_num >= mtg_entry_num) if "CALL" in direction else (mtg_exit_num <= mtg_entry_num)
+        is_mtg_win = (mtg_exit_num > mtg_entry_num) if "CALL" in direction else (mtg_exit_num < mtg_entry_num)
         
         if is_mtg_win:
             save_trade_to_db("MTG_WIN", session_type)
@@ -406,8 +406,8 @@ async def main():
             await asyncio.sleep(3600)
             continue
         
-        # Updated Timings: Morning (12 PM to 3 PM), Evening (4 PM to 10 PM)
-        is_morning = (12 <= h < 15)
+        # Updated Timings: Morning starts at 10 AM (10 AM to 3 PM), Evening (4 PM to 10 PM)
+        is_morning = (10 <= h < 15)
         is_evening = (16 <= h < 22)
         session_type = "Morning" if is_morning else ("Evening" if is_evening else None)
         
