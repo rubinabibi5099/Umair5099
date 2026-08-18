@@ -191,7 +191,6 @@ async def handle_telegram_callbacks():
                             s_key = "Morning" if cb_data == "res_morning" else ("Evening" if cb_data == "res_evening" else "Night")
                             tot, dw, mw, los, ac = get_session_stats(s_key)
                             
-                            # Wazeh aur tafseeli report buttons ke liye
                             ans_text = (
                                 f"📊 *{s_key.upper()} SESSION REPORT*\n"
                                 f"━━━━━━━━━━━━━━━━━━━\n"
@@ -271,7 +270,7 @@ async def process_signal(pair: str, yf_symbol: str, pattern: str, direction: str
         f"📊 **Asset:** `#{pair}` | **Session:** `{session_type}`\n"
         f"⏳ **Timeframe:** `1 Min Chart / 2 Min Expiry`\n"
         f"🎯 **Pattern:** `{pattern}` | 📈 **Direction:** `{direction}`\n"
-        f"📍 **Exact Entry:** `{entry_str}`\n"
+        f"📍 **Exact Entry Point:** `{entry_str}`\n"
         f"⚠️ **Take 1 Step MTG strictly if first loses**\n━━━━━━━━━━━━━━━━━━━━━━━━━"
     )
     
@@ -282,7 +281,7 @@ async def process_signal(pair: str, yf_symbol: str, pattern: str, direction: str
     else:
         send_telegram_message_with_buttons(signal_msg)
 
-    # EXACT 2 MINUTES EXPIRY WAIT
+    # EXACT 2 MINUTES EXPIRY WAIT (Zero Delay Result)
     await asyncio.sleep(120)
     
     candles_after = get_market_data(yf_symbol)
@@ -321,7 +320,7 @@ async def process_signal(pair: str, yf_symbol: str, pattern: str, direction: str
 
 async def main():
     global is_signal_running, last_loss_time
-    print("Malik Umair SVIP Final Master Bot Active...")
+    print("Malik Umair SVIP Synchronized Master Bot Active...")
     asyncio.create_task(handle_telegram_callbacks())
     
     m_ready, m_sum = "", ""
@@ -329,7 +328,6 @@ async def main():
     n_ready, n_sum = "", ""
     
     while True:
-        # UTC + 5 Pakistan Time Sync
         now_pk = datetime.utcnow() + timedelta(hours=5)
         current_date_str = now_pk.strftime("%Y-%m-%d")
         h, m = now_pk.hour, now_pk.minute
@@ -375,6 +373,12 @@ async def main():
         session_type = "Morning" if is_morning else ("Evening" if is_evening else ("Night" if is_night else None))
 
         if session_type and not is_signal_running:
+            # Sync Scanner: Har minute ke shuru hone par exact 0nd second par trigger karne ke liye
+            curr_sec = datetime.now().second
+            if curr_sec < 45:
+                await asyncio.sleep(1)
+                continue
+                
             signal_found = False
             pairs_list = list(LIVE_PAIRS_MAP.items())
             np.random.shuffle(pairs_list)
@@ -386,6 +390,10 @@ async def main():
                 if candles:
                     signal = analyze_sr_strategy(candles)
                     if signal:
+                        # 00 second hone ka intezar taake entry bilkul shuru mein mile
+                        while datetime.now().second != 0:
+                            await asyncio.sleep(0.1)
+                            
                         pattern, direction, entry_str, strength, entry_num = signal
                         await process_signal(pair, yf_symbol, pattern, direction, entry_str, strength, entry_num, session_type)
                         signal_found = True
