@@ -115,14 +115,14 @@ def check_live_market_status():
         if volatilities:
             avg_vol = np.mean(volatilities)
             if avg_vol > 0.0015:
-                return "🔴 **AVOID / HIGH CHOPPY VOLATILITY**\nMarket is moving aggressively. Trade with caution!", "AVOID"
+                return "AVOID / HIGH CHOPPY VOLATILITY\nMarket is moving aggressively. Trade with caution!"
             elif avg_vol < 0.0003:
-                return "🟡 **NORMAL / LOW MOMENTUM**\nMarket is quiet.", "NORMAL"
+                return "NORMAL / LOW MOMENTUM\nMarket is quiet."
             else:
-                return "🟢 **GOOD / STABLE MARKET**\nConditions are ideal for S&R execution!", "GOOD"
+                return "GOOD / STABLE MARKET\nConditions are ideal for S&R execution!"
     except:
         pass
-    return "🟢 **NORMAL MARKET CONDITIONS**\nStable environment for trading.", "NORMAL"
+    return "NORMAL MARKET CONDITIONS\nStable environment for trading."
 
 # --- 4 INTERACTIVE BUTTONS ---
 def get_session_buttons():
@@ -139,28 +139,7 @@ def get_session_buttons():
         ]
     }
 
-def send_telegram_message_with_buttons(text):
-    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
-    payload = {
-        'chat_id': CHANNEL_CHAT_ID, 
-        'text': text, 
-        'parse_mode': 'Markdown',
-        'reply_markup': get_session_buttons()
-    }
-    try:
-        requests.post(url, json=payload, timeout=20)
-    except Exception as e:
-        print(f"Telegram Message Error: {e}")
-
-def send_telegram_simple_message(text):
-    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
-    payload = {'chat_id': CHANNEL_CHAT_ID, 'text': text, 'parse_mode': 'Markdown'}
-    try:
-        requests.post(url, data=payload, timeout=20)
-    except Exception as e:
-        print(f"Telegram Message Error: {e}")
-
-def send_telegram_photo_with_buttons(photo_path, caption):
+def send_telegram_photo_with_buttons(photo_path, caption=""):
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendPhoto"
     for _ in range(3):
         try:
@@ -180,24 +159,66 @@ def send_telegram_photo_with_buttons(photo_path, caption):
             time.sleep(1)
     return False
 
-# --- AUTO SUMMARY SENDER ---
+# --- GENERATE PROFESSIONAL TEXT CARD IMAGE ---
+def create_text_card_image(title_text, content_lines, output_path):
+    try:
+        img_w, img_h = 800, 600
+        card = Image.new("RGBA", (img_w, img_h), (18, 20, 26, 255))
+        draw = ImageDraw.Draw(card)
+        
+        # Outer Golden Frame
+        draw.rounded_rectangle([10, 10, img_w - 10, img_h - 10], radius=16, fill=(24, 26, 34, 255), outline=(212, 175, 55, 255), width=3)
+        draw.rounded_rectangle([13, 13, img_w - 13, img_h - 13], radius=14, outline=(255, 223, 0, 150), width=1)
+        
+        # Header Banner
+        draw.rounded_rectangle([30, 30, img_w - 30, 95], radius=10, fill=(32, 35, 45, 255), outline=(212, 175, 55, 255), width=2)
+        
+        try:
+            font_title = ImageFont.truetype("arialbd.ttf", 24)
+            font_body = ImageFont.truetype("arial.ttf", 20)
+        except:
+            font_title = ImageFont.load_default()
+            font_body = ImageFont.load_default()
+            
+        # Draw Title
+        bbox = draw.textbbox((0, 0), title_text, font=font_title)
+        tw = bbox[2] - bbox[0]
+        th = bbox[3] - bbox[1]
+        draw.text(((img_w - tw) // 2 + 2, 50 + 2), title_text, font=font_title, fill=(0, 0, 0, 255))
+        draw.text(((img_w - tw) // 2, 50), title_text, font=font_title, fill=(255, 215, 0, 255))
+        
+        # Draw Content Lines
+        y_offset = 130
+        for line in content_lines:
+            draw.text((50, y_offset), line, font=font_body, fill=(240, 240, 240, 255))
+            y_offset += 42
+            
+        card.convert("RGB").save(output_path, "PNG")
+    except Exception as e:
+        print(f"Card Generation Error: {e}")
+
+# --- AUTO SUMMARY SENDER AS IMAGE ---
 def trigger_auto_summary(session_name):
     total, d_wins, m_wins, losses, acc = get_session_stats(session_name)
     t_wins = d_wins + m_wins
-    summary_text = (
-        f"👑 **MALIK UMAIR** 👑\n"
-        f"📊 **{session_name.upper()} SESSION REPORT**\n"
-        f"━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        f"🎯 **Total Signals:** `{total}`\n"
-        f"⭐ **Direct Wins:** `{d_wins}`\n"
-        f"✅ **MTG Wins:** `{m_wins}`\n"
-        f"🏆 **Total Wins:** `{t_wins}`\n"
-        f"❌ **Losses:** `{losses}`\n"
-        f"📈 **Accuracy Rate:** `{acc:.2f}%`\n"
-        f"━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        f"💡 *Excellence through precision & discipline.*"
-    )
-    send_telegram_message_with_buttons(summary_text)
+    
+    title = f"MALIK UMAIR - {session_name.upper()} SESSION REPORT"
+    lines = [
+        f"🎯 Total Signals Executed : {total}",
+        f"⭐ Direct Wins (Shureshot) : {d_wins}",
+        f"✅ MTG Wins (Recovery)    : {m_wins}",
+        f"🏆 Total Wins Combined    : {t_wins}",
+        f"❌ Total Losses           : {losses}",
+        f"📈 Overall Accuracy Rate  : {acc:.2f}%",
+        "--------------------------------------------------",
+        "💡 Excellence through precision & discipline."
+    ]
+    
+    img_path = f"summary_{session_name}_{int(time.time())}.png"
+    create_text_card_image(title, lines, img_path)
+    send_telegram_photo_with_buttons(img_path, f"📊 **{session_name.upper()} REPORT CARD**")
+    try: os.remove(img_path)
+    except: pass
 
 # --- TELEGRAM CALLBACK LISTENER ---
 async def handle_telegram_callbacks():
@@ -225,75 +246,68 @@ async def handle_telegram_callbacks():
                         callback_data = cq.get("data", "")
                         query_id = cq["id"]
                         
-                        ans_text = ""
+                        img_filename = f"callback_card_{int(time.time())}.png"
                         if callback_data == "res_news":
                             news_items = get_upcoming_news_schedule()
+                            lines = []
                             if news_items:
-                                ans_text = "📰 *UPCOMING HIGH IMPACT NEWS TIMINGS* 📰\n━━━━━━━━━━━━━━━━━━━━━━━━━\n"
                                 for item in news_items:
-                                    ans_text += (
-                                        f"🗓️ **Time:** `{item['time']}`\n"
-                                        f"💱 **Currency:** `{item['currency']}`\n"
-                                        f"📌 **Event:** `{item['title']}`\n"
-                                        f"--------------------------------------------------\n"
-                                    )
+                                    lines.append(f"🗓️ {item['time']} | {item['currency']}")
+                                    lines.append(f"📌 {item['title'][:35]}")
+                                    lines.append("--------------------------------------------------")
                             else:
-                                ans_text = "📰 *FOREX NEWS SCHEDULE*\n━━━━━━━━━━━━━━━━━━━━━━━━━\nNo major High-Impact news found right now."
+                                lines.append("No major High-Impact news found right now.")
+                            create_text_card_image("UPCOMING FOREX NEWS", lines, img_filename)
+                            
                         elif callback_data == "res_status":
-                            status_desc, _ = check_live_market_status()
-                            ans_text = f"📊 *LIVE MARKET STATUS SCANNER*\n━━━━━━━━━━━━━━━━━━━━━━━━━\n{status_desc}\n━━━━━━━━━━━━━━━━━━━━━━━━━"
+                            status_desc = check_live_market_status()
+                            lines = status_desc.split("\n")
+                            create_text_card_image("LIVE MARKET STATUS SCANNER", lines, img_filename)
+                            
                         else:
                             session_key = "Morning" if callback_data == "res_morning" else "Evening"
-                            title = "☀️ MORNING SESSION PERFORMANCE" if session_key == "Morning" else "🌙 EVENING SESSION PERFORMANCE"
-                            
                             total, d_wins, m_wins, losses, acc = get_session_stats(session_key)
                             t_wins = d_wins + m_wins
-                            
-                            ans_text = (
-                                f"👑 **MALIK UMAIR**\n"
-                                f"📌 *{title}*\n"
-                                f"━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-                                f"🎯 **Total Signals:** `{total}`\n"
-                                f"⭐ **Direct Wins:** `{d_wins}`\n"
-                                f"✅ **MTG Wins:** `{m_wins}`\n"
-                                f"🏆 **Total Wins:** `{t_wins}`\n"
-                                f"❌ **Losses:** `{losses}`\n"
-                                f"📈 **Accuracy:** `{acc:.2f}%`\n"
-                                f"━━━━━━━━━━━━━━━━━━━━━━━━━"
-                            )
+                            lines = [
+                                f"🎯 Total Signals         : {total}",
+                                f"⭐ Direct Wins           : {d_wins}",
+                                f"✅ MTG Wins              : {m_wins}",
+                                f"🏆 Total Wins            : {t_wins}",
+                                f"❌ Losses                : {losses}",
+                                f"📈 Accuracy Rate         : {acc:.2f}%"
+                            ]
+                            create_text_card_image(f"{session_key.upper()} PERFORMANCE", lines, img_filename)
                         
                         ans_url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/answerCallbackQuery"
                         requests.post(ans_url, json={"callback_query_id": query_id, "text": "Loaded", "show_alert": False})
-                        send_telegram_simple_message(ans_text)
+                        
+                        send_telegram_photo_with_buttons(img_filename, "👑 **MALIK UMAIR FOREX SIGNAL**")
+                        try: os.remove(img_filename)
+                        except: pass
         except:
             pass
         await asyncio.sleep(2)
 
-# --- EXACT VIP FRAME COMPOSER (MATCHING YOUR DESIGN) ---
+# --- EXACT VIP FRAME COMPOSER ---
 def apply_exact_vip_frame(image_path: str):
     try:
         chart_img = Image.open(image_path).convert("RGBA")
         c_w, c_h = chart_img.size
         
-        # Outer padding and dimensions for professional frame style
         padding = 24
         header_space = 46
         new_w = c_w + (padding * 2)
         new_h = c_h + padding + header_space + padding
         
-        # Create framed canvas with dark metallic background
         framed_img = Image.new("RGBA", (new_w, new_h), (20, 22, 28, 255))
         draw = ImageDraw.Draw(framed_img)
         
-        # Paste chart inside the frame panel
         chart_x = padding
         chart_y = padding + header_space
         framed_img.paste(chart_img, (chart_x, chart_y))
         
-        # Draw outer rounded border frame
         draw.rounded_rectangle([12, 12, new_w - 12, new_h - 12], radius=14, fill=None, outline=(50, 55, 68, 255), width=3)
         
-        # Draw Top Golden Header Banner (Malik Umair Forex Signal)
         banner_w = int(new_w * 0.55)
         banner_h = 42
         banner_x1 = (new_w - banner_w) // 2
@@ -301,11 +315,9 @@ def apply_exact_vip_frame(image_path: str):
         banner_x2 = banner_x1 + banner_w
         banner_y2 = banner_y1 + banner_h
         
-        # Gold/Dark gradient style header box
         draw.rounded_rectangle([banner_x1, banner_y1, banner_x2, banner_y2], radius=10, fill=(28, 30, 38, 255), outline=(212, 175, 55, 255), width=3)
         draw.rounded_rectangle([banner_x1+2, banner_y1+2, banner_x2-2, banner_y2-2], radius=8, outline=(255, 223, 0, 180), width=1)
         
-        # Load font for header title
         try:
             font = ImageFont.truetype("arialbd.ttf", 18)
         except:
@@ -318,11 +330,9 @@ def apply_exact_vip_frame(image_path: str):
         t_x = banner_x1 + (banner_w - t_w) // 2
         t_y = banner_y1 + (banner_h - t_h) // 2 - 2
         
-        # Text shadow and golden text fill
         draw.text((t_x + 1, t_y + 1), title_text, font=font, fill=(0, 0, 0, 255))
         draw.text((t_x, t_y), title_text, font=font, fill=(255, 215, 0, 255))
         
-        # Save final composed professional image
         framed_img.convert("RGB").save(image_path, "PNG")
     except Exception as e:
         print(f"Frame Composer Error: {e}")
@@ -340,7 +350,6 @@ async def capture_chart(pair: str, output_path: str):
                 await asyncio.sleep(5)
                 await page.screenshot(path=output_path, clip={"x": 0, "y": 0, "width": 1280, "height": 700})
                 if os.path.exists(output_path) and os.path.getsize(output_path) > 15000:
-                    # Apply exact professional VIP frame layout
                     apply_exact_vip_frame(output_path)
                     break
             except:
@@ -397,26 +406,29 @@ async def process_signal(pair: str, yf_symbol: str, pattern: str, direction: str
     
     await capture_chart(pair, live_img)
     
-    signal_msg = (
-        f"👑 **MALIK UMAIR SVIP SIGNAL** 👑\n"
-        f"━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        f"💎 **Asset / Pair:** `#{pair}`\n"
-        f"🕒 **Trading Session:** `{session_type} Session`\n"
-        f"⏳ **Timeframe:** `1 Min (Chart) | 2 Min (Expiry)`\n"
-        f"🎯 **Strategy Setup:** `{pattern}`\n"
-        f"📈 **Execution Direction:** `{direction}`\n"
-        f"📍 **Precise Entry Point:** `{entry_str}`\n"
-        f"💪 **Setup Confidence:** `{strength}`\n"
-        f"━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        f"⚠️ *Money Management Rule:* `Take 1 Step MTG in the same direction strictly if the first trade results in a loss.`"
-    )
+    # Send Signal as an Image Card with details printed on it
+    signal_card_path = f"signal_card_{timestamp}.png"
+    signal_lines = [
+        f"💎 Asset / Pair          : #{pair}",
+        f"🕒 Trading Session     : {session_type} Session",
+        f"⏳ Timeframe           : 1 Min (Chart) | 2 Min",
+        f"🎯 Strategy Setup      : {pattern}",
+        f"📈 Execution Direction : {direction}",
+        f"📍 Precise Entry Point : {entry_str}",
+        f"💪 Setup Confidence    : {strength}",
+        "--------------------------------------------------",
+        "⚠️ Take 1 Step MTG strictly if first trade loses."
+    ]
+    create_text_card_image("MALIK UMAIR SVIP SIGNAL", signal_lines, signal_card_path)
     
     if os.path.exists(live_img):
-        send_telegram_photo_with_buttons(live_img, signal_msg)
+        # Send both Chart and Signal Card or combine them nicely
+        send_telegram_photo_with_buttons(live_img, f"👑 **MALIK UMAIR SVIP - CHART ANALYSIS (#{pair})**")
+        send_telegram_photo_with_buttons(signal_card_path, f"📋 **VIP SIGNAL DETAILS (#{pair})**")
         try: os.remove(live_img)
         except: pass
-    else:
-        send_telegram_message_with_buttons(signal_msg)
+        try: os.remove(signal_card_path)
+        except: pass
 
     # 2 Minutes Expiry Wait
     await asyncio.sleep(120)
@@ -427,7 +439,7 @@ async def process_signal(pair: str, yf_symbol: str, pattern: str, direction: str
 
     if is_first_win:
         save_trade_to_db("DIRECT_WIN", session_type)
-        result_status = "🎯 **DIRECT WIN (SHURESHOT ITM ⭐)**"
+        result_status = "🎯 DIRECT WIN (SHURESHOT ITM ⭐)"
     else:
         mtg_entry_num = exit_num
         await asyncio.sleep(120)
@@ -438,28 +450,30 @@ async def process_signal(pair: str, yf_symbol: str, pattern: str, direction: str
         
         if is_mtg_win:
             save_trade_to_db("MTG_WIN", session_type)
-            result_status = "✅ **MTG WIN (RECOVERY ITM 🎯)**"
+            result_status = "✅ MTG WIN (RECOVERY ITM 🎯)"
         else:
             save_trade_to_db("LOSS", session_type)
-            result_status = "❌ **MTG LOSS (OTM 🛑)**"
+            result_status = "❌ MTG LOSS (OTM 🛑)"
 
     await capture_chart(pair, result_img)
     
-    result_msg = (
-        f"🏆 **MALIK UMAIR SVIP - TRADE RESULT** 🏆\n"
-        f"━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        f"💎 **Asset:** `#{pair}`\n"
-        f"📊 **Outcome Status:** {result_status}\n"
-        f"━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        f"💡 *Consistency is the key to long-term trading success.*"
-    )
+    # Send Result as an Image Card
+    result_card_path = f"result_card_{timestamp}.png"
+    result_lines = [
+        f"💎 Asset / Pair   : #{pair}",
+        f"📊 Outcome Status : {result_status}",
+        "--------------------------------------------------",
+        "💡 Consistency is the key to trading success."
+    ]
+    create_text_card_image("MALIK UMAIR SVIP - TRADE RESULT", result_lines, result_card_path)
     
     if os.path.exists(result_img):
-        send_telegram_photo_with_buttons(result_img, result_msg)
+        send_telegram_photo_with_buttons(result_img, f"🏆 **TRADE OUTCOME CHART (#{pair})**")
+        send_telegram_photo_with_buttons(result_card_path, f"📢 **RESULT CARD REPORT**")
         try: os.remove(result_img)
         except: pass
-    else:
-        send_telegram_message_with_buttons(result_msg)
+        try: os.remove(result_card_path)
+        except: pass
 
     is_signal_running = False
 
@@ -482,7 +496,6 @@ async def main():
             await asyncio.sleep(3600)
             continue
         
-        # Active Timings: Morning (10 AM to 3 PM), Evening (4 PM to 10 PM)
         is_morning = (10 <= h < 15)
         is_evening = (16 <= h < 22)
         session_type = "Morning" if is_morning else ("Evening" if is_evening else None)
